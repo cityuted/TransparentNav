@@ -11,7 +11,7 @@ import RxSwift
 import RxCocoa
 import SnapKit
 
-class TransparentViewCtr: CustomViewCtr, UINavigationBarDelegate, UIScrollViewDelegate, TransparentNavBar {
+class TransparentViewCtr: CustomViewCtr, UINavigationBarDelegate, UIScrollViewDelegate, StandaloneNavBar {
 
     lazy var scrollView: UIScrollView = {
         let scrollView = UIScrollView()
@@ -58,7 +58,7 @@ class TransparentViewCtr: CustomViewCtr, UINavigationBarDelegate, UIScrollViewDe
         return view
     }()
     
-    lazy var statusBarStatus: BehaviorRelay<UIStatusBarStyle> = {
+    lazy var statusBarStyle: BehaviorRelay<UIStatusBarStyle> = {
         return BehaviorRelay(value: UIStatusBarStyle.lightContent)
     }()
     
@@ -75,13 +75,16 @@ class TransparentViewCtr: CustomViewCtr, UINavigationBarDelegate, UIScrollViewDe
         setupCustomNav()
         view.addSubview(statusBarView)
         
-        statusBarStatus
+        statusBarStyle
             .distinctUntilChanged()
             .skip(1)
             .observeOn(MainScheduler.instance)
             .subscribe(onNext: { [weak self] _ in
                 self?.setNeedsStatusBarAppearanceUpdate()
             }).disposed(by: rx.disposeBag)
+        
+        navigationBar.layoutIfNeeded()
+        print("navigation bar height:", navigationBar.frame.height)
     }
     
     func setupCustomNav() {
@@ -120,6 +123,7 @@ class TransparentViewCtr: CustomViewCtr, UINavigationBarDelegate, UIScrollViewDe
     override func viewSafeAreaInsetsDidChange() {
         super.viewSafeAreaInsetsDidChange()
         scrollView.contentInset = UIEdgeInsets(top: -self.view.safeAreaInsets.top, left: 0, bottom: 0, right: 0)
+        print("safeareainsets top:", self.view.safeAreaInsets.top)
     }
 }
 
@@ -162,16 +166,6 @@ extension TransparentViewCtr {
     }
 }
 
-extension UIApplication {
-    class var statusBarBackgroundColor: UIColor? {
-        get {
-            return (shared.value(forKey: "statusBar") as? UIView)?.backgroundColor
-        } set {
-            (shared.value(forKey: "statusBar") as? UIView)?.backgroundColor = newValue
-        }
-    }
-}
-
 extension UIColor {
     
     static var background200: UIColor {
@@ -181,6 +175,7 @@ extension UIColor {
 }
 
 extension TransparentViewCtr {
+    
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         if scrollView == self.scrollView {
             // Cover Image View
@@ -193,9 +188,13 @@ extension TransparentViewCtr {
                 self.headerView.coverImageView.frame.origin.y = offSetY
             }
             
+            print("scrollView.contentOffset.y:", scrollView.contentOffset.y)
             
             // Nav Bar Style
-            let offSet = scrollView.contentOffset.y / (height)
+            
+            let reach = height - (self.view.safeAreaInsets.top + navigationBar.frame.height)
+            
+            let offSet = scrollView.contentOffset.y / reach
             
             print("offSet: ", offSet)
             
@@ -205,13 +204,13 @@ extension TransparentViewCtr {
     
     func changeNavBarStyle(offSet: CGFloat) {
         if offSet > 1 {
-            statusBarStatus.accept(.default)
+            statusBarStyle.accept(.default)
             statusBarView.backgroundColor = UIColor.background200
             navigationBar.backgroundColor = UIColor.background200
             navigationBar.tintColor = UIColor(hue: 1, saturation: 0, brightness: 0.54, alpha: 1)
         } else {
             let brightness = 1 - (offSet * 0.46)
-            statusBarStatus.accept(.lightContent)
+            statusBarStyle.accept(.lightContent)
             statusBarView.backgroundColor = UIColor.background200.withAlphaComponent(offSet)
             navigationBar.tintColor = UIColor(hue: 1, saturation: 0, brightness: brightness, alpha: 1)
             navigationBar.backgroundColor = UIColor.background200.withAlphaComponent(offSet)

@@ -36,18 +36,20 @@ class FirstViewController: CustomViewCtr {
         let vc = TransparentViewCtr()
         self.navigationController?.pushViewController(vc, animated: true)
     }
-    
+
 }
 
-protocol TransparentNavBar {
-    var statusBarStatus: BehaviorRelay<UIStatusBarStyle> { get }
+protocol StandaloneNavBar {
+    var navigationBar: UINavigationBar { get }
+    var statusBarStyle: BehaviorRelay<UIStatusBarStyle> { get }
+    var statusBarView: UIView { get }
 }
 
 class CustomViewCtr: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        guard self is TransparentNavBar else {
+        guard self is StandaloneNavBar else {
             self.navigationController?.setNavigationBarHidden(false, animated: true)
             return
         }
@@ -56,10 +58,10 @@ class CustomViewCtr: UIViewController {
     }
     
     override var preferredStatusBarStyle: UIStatusBarStyle {
-        guard let transparentNavBar = self as? TransparentNavBar else {
+        guard let standaloneNavBar = self as? StandaloneNavBar else {
             return .default
         }
-        return transparentNavBar.statusBarStatus.value
+        return standaloneNavBar.statusBarStyle.value
     }
 }
 
